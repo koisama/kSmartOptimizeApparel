@@ -133,9 +133,10 @@ namespace kSmartOptimizeApparel
             {
                 kJobGiver_OptimizeApparel.coldCurve = new SimpleCurve
                 {
+                    new CurvePoint(wantedWarmthTemperature * 2, 1f),
                     new CurvePoint(wantedWarmthTemperature, 1f),
-                    new CurvePoint(wantedWarmthTemperature * 0.8f, 0.9f),
-                    new CurvePoint(wantedWarmthTemperature * 0.50f, 0.6f),
+                    new CurvePoint(wantedWarmthTemperature * 0.85f, 0.9f),
+                    new CurvePoint(wantedWarmthTemperature * 0.50f, 0.4f),
                     new CurvePoint(0f, 0.5f)
                 };
             }
