@@ -57,7 +57,9 @@ namespace kSmartOptimizeApparel
             MethodInfo moddedMethod = typeof(kJobGiver_OptimizeApparel).GetMethod("TryGiveTerminalJob", BindingFlags.Instance | BindingFlags.NonPublic);
 
             if (!CommunityCoreLibrary.Detours.TryDetourFromTo(coreMethod, moddedMethod))
+            {
                 Log.Error("kSmartOptimizeApparel: Error detouring mod.");
+            }
 
             OnLevelWasLoaded(-1);
         }

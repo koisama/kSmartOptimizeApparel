@@ -24,15 +24,23 @@ namespace kSmartOptimizeApparel
     {
         private const int ApparelOptimizeCheckInterval = 5500;
 
-        private const float MinScoreGainToCare = 0.05f;
-
         private const float ScoreFactorIfNotReplacing = 10f;
 
         private static float wantedWarmthTemperature = 0.1f;
 
+
+        private static float MinWarmthToCareAbout = 10f;
+        private static float MinScoreGainToCare = 0.05f;
+        
+        private static float ApparelBaseConstant = 0.1f;
+        private static float ArmorBonusConstant = 1.25f;
+        private static float SharpConstant = 1f;
+        private static float BluntConstant = 0.75f;
+        
+
         private static StringBuilder debugSb;
 
-        private static SimpleCurve ColdCurve = new SimpleCurve
+        private static SimpleCurve coldCurve = new SimpleCurve
         {
             new CurvePoint(-100f, 1f),
             new CurvePoint(0f, 0.1f)
@@ -41,7 +49,7 @@ namespace kSmartOptimizeApparel
         private static readonly SimpleCurve HitPointsPercentScoreFactorCurve = new SimpleCurve
         {
             new CurvePoint(0f, 0.1f),
-            new CurvePoint(0.6f, 0.7f),
+            new CurvePoint(0.6f, 0.8f),
             new CurvePoint(1f, 1f)
         };
 
@@ -52,6 +60,7 @@ namespace kSmartOptimizeApparel
 
         internal Job TryGiveTerminalJob(Pawn pawn)
         {
+
             if (pawn.outfits == null)
             {
                 Log.ErrorOnce(pawn + " tried to run JobGiver_OptimizeApparel without an OutfitTracker", 5643897);
@@ -103,15 +112,33 @@ namespace kSmartOptimizeApparel
             }
 
             //determining temperature curve for current month for current pawn
-            wantedWarmthTemperature = pawn.def.GetStatValueAbstract(StatDefOf.ComfyTemperatureMin, null) - GenTemperature.AverageTemperatureAtWorldCoordsForMonth(Find.Map.WorldCoords, GenDate.CurrentMonth);
+
+            //calculating trait offset because there's no way to get comfytemperaturemin without clothes
+            List<Trait> traitList = (
+                from tr in pawn.story.traits.allTraits
+                where tr.CurrentData.statOffsets != null && tr.CurrentData.statOffsets.Any((StatModifier se) => se.stat == StatDefOf.ComfyTemperatureMin)
+                select tr
+                ).ToList<Trait>();
+            float traitAmount = 0f;
+            foreach(Trait t in traitList)
+            {
+                traitAmount += t.CurrentData.statOffsets.First((StatModifier se) => se.stat == StatDefOf.ComfyTemperatureMin).value;
+            }
+
+            //normally positive difference between pawns temp and outdoors temp
+            wantedWarmthTemperature = traitAmount + pawn.def.GetStatValueAbstract(StatDefOf.ComfyTemperatureMin, null) - GenTemperature.AverageTemperatureAtWorldCoordsForMonth(Find.Map.WorldCoords, GenDate.CurrentMonth);
             wantedWarmthTemperature = (wantedWarmthTemperature == 0f) ? 0.1f : wantedWarmthTemperature;
 
-            kJobGiver_OptimizeApparel.ColdCurve = new SimpleCurve
+            if (wantedWarmthTemperature > MinWarmthToCareAbout)
+            {
+                kJobGiver_OptimizeApparel.coldCurve = new SimpleCurve
                 {
                     new CurvePoint(wantedWarmthTemperature, 1f),
                     new CurvePoint(wantedWarmthTemperature * 0.75f, 0.9f),
+                    new CurvePoint(wantedWarmthTemperature * 0.50f, 0.6f),
                     new CurvePoint(0f, 0.5f)
                 };
+            }
 
             for (int j = 0; j < list.Count; j++)
             {
@@ -188,13 +215,13 @@ namespace kSmartOptimizeApparel
         {
 
             //base score
-            float score = 0.1f;
+            float score = kJobGiver_OptimizeApparel.ApparelBaseConstant;
 
             //calculating protection, it also gets a little buff
             float protectionScore =
-                ap.GetStatValue(StatDefOf.ArmorRating_Sharp) +
-                ap.GetStatValue(StatDefOf.ArmorRating_Blunt) * 0.75f;
-            score += protectionScore * 1.25f;
+                ap.GetStatValue(StatDefOf.ArmorRating_Sharp) * kJobGiver_OptimizeApparel.SharpConstant +
+                ap.GetStatValue(StatDefOf.ArmorRating_Blunt) * kJobGiver_OptimizeApparel.BluntConstant;
+            score += protectionScore * kJobGiver_OptimizeApparel.ArmorBonusConstant;
 
             //calculating HP
             if (ap.def.useHitPoints)
@@ -204,10 +231,10 @@ namespace kSmartOptimizeApparel
             }
 
             //calculating warmth
-            if (wantedWarmthTemperature > 5)
+            if (wantedWarmthTemperature > MinWarmthToCareAbout && ap.def.GetStatValueAbstract(StatDefOf.Insulation_Cold) < 0)
             {
                 float warmth = Math.Abs(ap.GetStatValue(StatDefOf.Insulation_Cold, true));
-                score *= kJobGiver_OptimizeApparel.ColdCurve.Evaluate(warmth);
+                score *= kJobGiver_OptimizeApparel.coldCurve.Evaluate(warmth);
             }
 
             return score;
