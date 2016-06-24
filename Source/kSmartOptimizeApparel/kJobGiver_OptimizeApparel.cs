@@ -29,7 +29,7 @@ namespace kSmartOptimizeApparel
         private static float wantedWarmthTemperature = 0.1f;
 
 
-        private static float MinWarmthToCareAbout = 10f;
+        private static float MinWarmthToCareAbout = 5f;
         private static float MinScoreGainToCare = 0.05f;
         
         private static float ApparelBaseConstant = 0.1f;
@@ -134,7 +134,7 @@ namespace kSmartOptimizeApparel
                 kJobGiver_OptimizeApparel.coldCurve = new SimpleCurve
                 {
                     new CurvePoint(wantedWarmthTemperature, 1f),
-                    new CurvePoint(wantedWarmthTemperature * 0.75f, 0.9f),
+                    new CurvePoint(wantedWarmthTemperature * 0.8f, 0.9f),
                     new CurvePoint(wantedWarmthTemperature * 0.50f, 0.6f),
                     new CurvePoint(0f, 0.5f)
                 };
